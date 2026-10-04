@@ -1,57 +1,119 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Navbar from './components/Navbar'
 import CompletedTodos from './components/CompletedTodos'
 
 function App() {
-  const [done, setDoneToDo] = useState([])
   const [page, setPage] = useState("home")
+  const [completedTodos, setCompletedTodos] = useState([])
   const [editingId, setEditingId] = useState(null)
   const [toDoList, setToDoList] = useState([])
   const [In, setIn] = useState("")
+  useEffect(() => {
+    const getTodos = async () => {
+
+      if (page === "home") {
+
+        const response = await fetch("http://localhost:5000/api/todos");
+        const data = await response.json();
+
+        setToDoList(data.filter(todo => todo.completed === false))
+
+      } else {
+
+        const response = await fetch("http://localhost:5000/api/todos/completed");
+        const data = await response.json();
+
+        setCompletedTodos(data)
+
+      }
+    }
+
+    getTodos();
+
+  }, [page])
+
+
+  const addTodo = async () => {
+    if (editingId == null) {
+
+      const response = await fetch("http://localhost:5000/api/todos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: In,
+          completed: false
+        })
+      })
+
+      const data = await response.json()
+      console.log(data)
+
+
+      setToDoList(prev => [...prev, data]);
+      setIn("");
+    } else {
+
+      const response = await fetch(`http://localhost:5000/api/todos/${editingId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          title: In
+        })
+      })
+      const data = await response.json()
+      setEditingId(null);
+      setIn("");
+      setToDoList(prev =>
+        prev.map(todo =>
+          todo._id === data._id ? data : todo
+        )
+      )
+
+    }
+  }
 
   const handleInput = (e) => {
     console.log(e.target.value)
     setIn(e.target.value)
   }
 
-  const handleDelete = (todo) => {
-    setToDoList(
-      toDoList.filter((item) => item.id !== todo.id)
-    );
+  const handleDelete = async (todo) => {
+    await fetch(`http://localhost:5000/api/todos/${todo._id}`, {
+      method: "DELETE"
+    })
+
+    setToDoList(prev =>
+      prev.filter(item => item._id !== todo._id)
+    )
+
   }
 
-  const handleAdd = () => {
-    if (editingId == null) {
-      setToDoList([...toDoList, {
-        id: Date.now(),
-        title: In,
-        completed: false
-      }])
-      setIn("")
-    } else {
-      setToDoList(
-        toDoList.map((todo) => {
-          if (todo.id == editingId) {
-            return {
-              ...todo, title: In
-            };
-          }
-          return todo;
-        })
-      )
-      editingId = null;
-      setIn("");
-    }
-  }
+
 
   const handleEdit = (todo) => {
     setIn(todo.title);
-    setEditingId(todo.id);
+    setEditingId(todo._id);
   }
 
-  const handleDone = (todo) => {
-    setDoneToDo([...done, todo])
-    handleDelete(todo)
+  const handleDone = async (todo) => {
+    const response = await fetch(`http://localhost:5000/api/todos/${todo._id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        completed: true
+      })
+    })
+
+    const data = await response.json();
+    setToDoList(prev =>
+      prev.filter(todo => todo._id !== data._id)
+    )
   }
 
   return (
@@ -84,7 +146,7 @@ function App() {
                 />
 
                 <button
-                  onClick={handleAdd}
+                  onClick={addTodo}
                   className='bg-blue-600 hover:bg-blue-700 transition px-5 py-2.5 rounded-lg text-white font-medium shadow-sm'
                 >
                   Add
@@ -103,7 +165,7 @@ function App() {
 
                 return (
                   <div
-                    key={items.id}
+                    key={items._id}
                     className='flex items-center gap-3 bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-3 hover:shadow-md transition'
                   >
 
@@ -155,7 +217,7 @@ function App() {
 
       ) : (
 
-        <CompletedTodos done={done} />
+        <CompletedTodos done={completedTodos} />
 
       )}
 

@@ -22,7 +22,7 @@ const CompletedTodos = ({done}) => {
                             return (
                                 <div
                                     className='bg-slate-50 border border-slate-200 rounded-lg p-4 mb-3 text-slate-700 font-medium'
-                                    key={item.id}
+                                    key={item._id}
                                 >
                                     ✓ {item.title}
                                 </div>
